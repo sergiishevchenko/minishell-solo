@@ -1,0 +1,7 @@
+CompileFlags:
+  Add:
+    - -I.
+    - -Iinclude
+    - -Ilibft
+    - -I../include
+    - -I../libft
