@@ -16,7 +16,7 @@ extern volatile sig_atomic_t g_signal;
 |------------------|------|
 | `volatile` | Forces every access to go to **memory**, not a compiler-kept copy in a CPU register. |
 | `sig_atomic_t` | Integer type that C guarantees can be read/written as one indivisible step in a signal handler. |
-| `extern` | Declared in the header; defined once in `src/main.c`. |
+| `extern` | Declared in the header; defined once in `src/shell/main.c`. |
 
 #### Why `volatile` — “not from cache”
 
@@ -54,8 +54,8 @@ In practice for this project: the handler may only assign to `g_signal`; the mai
 
 **Lifecycle:**
 1. Cleared to `0` at the start of each prompt iteration in `shell_loop`.
-2. Set in the prompt `SIGINT` handler (`src/signals.c`).
-3. Set when a child dies from `SIGINT` (`src/exec_wait.c`).
+2. Set in the prompt `SIGINT` handler (`src/shell/signals.c`).
+3. Set when a child dies from `SIGINT` (`src/exec/exec_wait.c`).
 4. Read after `readline` / during bonus short-circuit to set status `130` or abort.
 
 Subject constraint: one global, signal number only.
