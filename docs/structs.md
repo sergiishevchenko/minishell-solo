@@ -81,7 +81,9 @@ Produced by the lexer.
 | `T_LPAREN` | `(` (bonus) |
 | `T_RPAREN` | `)` (bonus) |
 
-### `t_ntype` — AST (Abstract Syntax Tree) node kinds
+### `t_ntype` — AST node kinds
+
+AST = Abstract Syntax Tree. Full notes: [ast.md](ast.md).
 
 | Value | Meaning |
 |-------|---------|
@@ -120,7 +122,7 @@ One redirection attached to a command.
 
 ### `t_node`
 
-AST (Abstract Syntax Tree) node. Shape depends on `type`.
+One node of the AST ([ast.md](ast.md)). Shape depends on `type`.
 
 | Field | Type | Meaning |
 |-------|------|---------|
