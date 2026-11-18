@@ -1,0 +1,106 @@
+echo a && echo b
+%%
+false && echo b
+echo $?
+%%
+true || echo b
+%%
+false || echo b
+%%
+false || false || echo third
+%%
+true && false || echo fallback
+%%
+false && echo no || echo yes
+%%
+echo a && false && echo no
+echo $?
+%%
+(echo sub)
+%%
+(echo a && echo b) | cat
+%%
+(false || echo inner) && echo outer
+%%
+(cd /tmp && pwd)
+pwd
+%%
+(exit 3)
+echo $?
+%%
+(exit 3) || echo failed
+%%
+(export X=1)
+echo [$X]
+%%
+( (echo nested) )
+%%
+(echo redirect) > sub.txt
+cat sub.txt
+%%
+echo a | (cat && echo b)
+%%
+()
+%%
+(echo a
+%%
+echo a)
+%%
+(echo a) echo b
+%%
+echo a (b)
+%%
+&& echo a
+%%
+echo a &&
+%%
+echo a || || echo b
+%%
+touch a1 a2 b1
+echo a*
+%%
+touch a1 a2 b1
+echo *1
+%%
+touch x.c y.c z.h
+echo *.c
+%%
+touch abc
+echo a*c a*b*c *b*
+%%
+echo nomatch*
+%%
+echo "*" '*'
+%%
+touch .hidden visible
+echo *
+echo .*
+%%
+touch f1 f2
+export P="f*"
+echo $P
+echo "$P"
+%%
+touch a1 a2
+cat a* > /dev/null && echo multi
+%%
+touch only
+echo x > o*
+cat only
+%%
+touch m1 m2
+echo x > m*
+echo $?
+%%
+echo a && (echo b || echo c) && echo d
+%%
+false && (echo b) || (echo c && false) || echo e
+%%
+echo $? && false
+echo $?
+%%
+export A=1 && echo $A
+%%
+cat << EOF && echo after
+heredoc
+EOF

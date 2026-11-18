@@ -1,0 +1,52 @@
+echo $HOME$ "$HOME$" $HOME$USER
+%%
+export A='"quoted"' B="it's"
+echo $A $B "$A"
+%%
+echo | |
+%%
+cat << $USER
+body
+$USER
+%%
+cat << "a b"
+x
+a b
+%%
+export X="-n hi"
+echo $X
+%%
+export A=a B=b
+echo $A$B "$A""$B" '$A'$B
+%%
+cat <<EOF | cat | wc -l
+1
+2
+EOF
+%%
+ls | ls | ls | ls | ls | ls | ls | ls | ls | ls | ls | ls | ls | ls | ls | ls | ls | ls | ls | ls | wc -l
+%%
+echo a > o1 | echo b > o2
+cat o1 o2
+%%
+export | grep -c declare
+%%
+echo "$?"'$?'$?
+%%
+export A=1 B=2
+unset A B
+env | grep -E "^(A|B)="
+echo $?
+%%
+cat << EOF
+a	tab and $ dollar and $? and "$HOME"
+EOF
+%%
+export EMPTY=
+echo [$EMPTY$EMPTY] [$EMPTY"$EMPTY"]
+%%
+/bin/echo "$PATH" | tr ':' '\n' | head -1
+%%
+exit 255
+%%
+exit -256

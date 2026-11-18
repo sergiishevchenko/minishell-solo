@@ -1,0 +1,403 @@
+echo hello world
+%%
+echo
+%%
+echo -n hello
+%%
+echo -n -n -nnn hello -n
+%%
+echo -nx hello
+%%
+echo - hello
+%%
+echo "hello      world"   'single   quotes'
+%%
+echo "a'b'c" 'a"b"c'
+%%
+echo ''
+%%
+echo "" "" x
+%%
+echo $HOME
+%%
+echo "$HOME" '$HOME'
+%%
+echo "'$HOME'" '"$HOME"'
+%%
+echo $NOT_SET_VAR
+%%
+echo a$NOT_SET_VAR b
+%%
+echo $
+%%
+echo "$"
+%%
+echo $"HOME" $'HOME'
+%%
+echo $1abc $9
+%%
+echo "$USER"text$USER"$USER"
+%%
+echo $?
+%%
+false
+echo $?
+%%
+nonexistentcmd
+echo $?
+%%
+/bin/ls /nonexistent_dir
+echo $?
+%%
+echo $?$?
+%%
+export A="a   b   c"
+echo $A
+echo "$A"
+%%
+export A=" leading and trailing "
+echo [$A]
+echo ["$A"]
+%%
+export A="ls -a"
+$A /dev/null
+%%
+export E=
+echo [$E] ["$E"]
+$E echo works
+%%
+export CMD=echo
+$CMD hi
+%%
+export X=1 Y=2 Z
+echo $X $Y $Z
+%%
+export X=1
+export X+=23
+echo $X
+%%
+export 1BAD=x
+echo $?
+%%
+export =x
+echo $?
+%%
+export GOOD=1 2bad=3 OK=4
+echo $? $GOOD $OK
+%%
+export A-B=1
+echo $?
+%%
+export VAR=hello
+unset VAR
+echo [$VAR]
+%%
+unset NOT_EXIST
+echo $?
+%%
+unset PATH
+ls
+echo $?
+%%
+export PATH=
+ls
+echo $?
+%%
+export TEST=value
+env | grep TEST
+%%
+export NOVALUE
+env | grep NOVALUE
+echo $?
+%%
+export ZZZ=1 AAA=2 QUOTE='a"b$c'
+export | grep -E 'ZZZ|AAA|QUOTE'
+%%
+export ONLYNAME
+export | grep ONLYNAME
+%%
+pwd
+%%
+cd /
+pwd
+%%
+cd /tmp
+pwd
+cd ..
+pwd
+%%
+mkdir d1
+cd d1
+pwd
+cd ..
+rmdir d1
+%%
+cd /nonexistent
+echo $?
+%%
+cd a b
+echo $?
+%%
+cd
+pwd
+%%
+cd /tmp
+echo $PWD
+echo $OLDPWD
+%%
+touch notadir
+cd notadir
+echo $?
+%%
+env | grep -c PATH
+%%
+env extra_arg
+echo $?
+%%
+exit
+%%
+exit 0
+%%
+exit 42
+%%
+exit 256
+%%
+exit -1
+%%
+exit +7
+%%
+exit "  12  "
+%%
+exit 9223372036854775807
+%%
+#bash5
+exit 9223372036854775808
+%%
+#bash5
+exit abc
+%%
+exit 1 2
+echo still here $?
+%%
+#bash5
+exit abc def
+%%
+false
+exit
+%%
+ls | wc -l
+%%
+echo hello | cat | cat | cat
+%%
+echo a | grep b
+echo $?
+%%
+cat /etc/passwd | grep root | head -1 | cut -c1-4
+%%
+ls nonexistent | cat
+echo $?
+%%
+echo hi | nonexistentcmd
+echo $?
+%%
+nonexistentcmd | echo hi
+%%
+exit 3 | echo piped
+echo $?
+%%
+echo hi | exit 5
+echo $?
+%%
+export A=1 | cat
+echo [$A]
+%%
+cd / | pwd
+%%
+echo hello > out.txt
+cat out.txt
+%%
+echo first > out.txt
+echo second >> out.txt
+cat out.txt
+%%
+echo a > f1 > f2
+cat f1
+cat f2
+%%
+> empty.txt
+ls empty.txt
+%%
+echo test > f
+cat < f
+%%
+cat < nonexistent_file
+echo $?
+%%
+echo x > f
+cat < f < nonexistent
+echo $?
+%%
+< /etc/passwd grep root | head -1 | cut -c1-4
+%%
+echo hello >out1 world
+cat out1
+%%
+echo "quoted name" > "file with spaces"
+cat "file with spaces"
+%%
+export F=target
+echo data > $F
+cat target
+%%
+export F="a b"
+echo data > $F
+echo $?
+%%
+echo data > $NOTSET
+echo $?
+%%
+touch ro
+chmod 000 ro
+echo x > ro
+echo $?
+cat ro
+echo $?
+chmod 644 ro
+%%
+cat << EOF
+hello
+world
+EOF
+%%
+cat << EOF
+$HOME
+"$USER"
+'$USER'
+EOF
+%%
+cat << 'EOF'
+$HOME
+EOF
+%%
+cat << "EOF"
+$HOME
+EOF
+%%
+cat << E"O"F
+$HOME
+EOF
+%%
+cat << EOF | wc -l
+a
+b
+c
+EOF
+%%
+cat << A << B
+first
+A
+second
+B
+%%
+cat << EOF > hd.txt
+saved
+EOF
+cat hd.txt
+%%
+#bash5
+cat << EOF
+unterminated
+%%
+<< EOF
+ignored
+EOF
+echo $?
+%%
+cat <<EOF
+$? $NOPE x
+EOF
+%%
+echo |
+%%
+| echo
+%%
+echo >
+%%
+echo > > f
+%%
+echo <<
+%%
+cat < | cat
+%%
+echo "unclosed
+%%
+echo 'unclosed
+%%
+""
+echo $?
+%%
+''
+echo $?
+%%
+./nonexistent
+echo $?
+%%
+/
+echo $?
+%%
+mkdir dirx
+./dirx
+echo $?
+%%
+printf 'echo script\n' > noexec.sh
+./noexec.sh
+echo $?
+%%
+printf '#!/bin/sh\necho script ok\n' > s.sh
+chmod +x s.sh
+./s.sh
+echo $?
+%%
+/bin/echo absolute path
+%%
+ls -la /dev/null | wc -l
+%%
+echo $SHLVL
+%%
+   echo    spaced    out   
+%%
+	echo	tabs
+%%
+
+%%
+echo "$HOME"'$HOME'"$HOME"
+%%
+echo '"'"'"
+%%
+echo "a" "b"c 'd'"e"
+%%
+echo "|" "<" ">" ">>" "<<"
+%%
+echo a"|"b
+%%
+cat out.txt nope
+echo $?
+%%
+echo $? | cat
+%%
+sleep 0 | sleep 0
+echo $?
+%%
+export A=x
+export A
+echo $A
+%%
+unset HOME
+cd
+echo $?
+%%
+export PATH=/bin:/usr/bin
+which ls > /dev/null
+echo $?
+%%
+cat | cat | ls /dev/null
