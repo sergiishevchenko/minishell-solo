@@ -28,12 +28,20 @@ Why a tree and not only a token list?
 For every line, `process_line` in `src/shell/main.c` roughly does:
 
 ```
-1. lex(line)           → t_token linked list
-2. parse(tokens)       → t_node tree  (root stored in sh->ast)
-3. free_tokens(...)
-4. read_heredocs(ast)  → fill heredoc fds on t_redir nodes
-5. exec_node(sh, ast)  → walk the tree, set sh->status
-6. free_ast(ast)
+┌────────────┐    ┌────────────┐    ┌────────────┐    ┌────────────┐
+│  raw line  │───▶│   Lexer    │───▶│   Parser   │───▶│  Heredocs  │
+│  char *    │    │  t_token*  │    │  t_node*   │    │  fill fds  │
+└────────────┘    └────────────┘    └─────┬──────┘    └─────┬──────┘
+                                          │ sh->ast         │
+                                          ▼                 ▼
+                                    ┌────────────┐    ┌────────────┐
+                                    │ free_tokens│    │ exec_node  │
+                                    └────────────┘    │ walk tree  │
+                                                      └─────┬──────┘
+                                                            ▼
+                                                      ┌────────────┐
+                                                      │  free_ast  │
+                                                      └────────────┘
 ```
 
 | Stage | Input | Output | Role vs AST |
@@ -95,19 +103,30 @@ Built by `parse_simple` (`src/parser/parser_cmd.c`): while the current token is 
 
 Binary node: run `left` and `right` with stdout of left connected to stdin of right.
 
-A longer pipeline is a **right-leaning** (or chained) tree of `N_PIPE` nodes, not a flat array:
+A longer pipeline is a **right-leaning** chain of `N_PIPE` nodes, not a flat array:
 
 ```sh
 ls | grep a | wc
 ```
 
 ```
-        N_PIPE
-       /      \
-   N_CMD      N_PIPE
-    ls       /      \
-         N_CMD      N_CMD
-         grep a      wc
+                    ┌──────────┐
+                    │  N_PIPE  │  ← root
+                    └────┬─────┘
+               left      │      right
+          ┌──────────────┼──────────────┐
+          ▼                             ▼
+   ┌────────────┐                ┌──────────┐
+   │   N_CMD    │                │  N_PIPE  │
+   │ words: ls  │                └────┬─────┘
+   └────────────┘           left      │      right
+                               ┌──────┼──────┐
+                               ▼             ▼
+                        ┌────────────┐ ┌────────────┐
+                        │   N_CMD    │ │   N_CMD    │
+                        │ words:     │ │ words: wc  │
+                        │  grep, a   │ └────────────┘
+                        └────────────┘
 ```
 
 Mandatory `exec_node` only distinguishes pipe vs command: pipes go to `exec_pipeline`, everything else to `exec_command`.
@@ -125,7 +144,7 @@ The body AST hangs on `left`. Executor forks; the child runs that subtree. Paren
 
 ---
 
-## Tokens vs AST (same line)
+## Lexer scheme (flat list)
 
 Input:
 
@@ -133,49 +152,156 @@ Input:
 ls -la | grep src | wc -l > out
 ```
 
-**Lexer** (flat list, order of typing):
+The lexer does **not** build a tree. It builds a **singly linked list** of `t_token`:
 
 ```
-T_WORD "ls" → T_WORD "-la" → T_PIPE → T_WORD "grep" → T_WORD "src"
-→ T_PIPE → T_WORD "wc" → T_WORD "-l" → T_OUT → T_WORD "out"
+  head
+   │
+   ▼
+┌──────────┬──────┐    ┌──────────┬──────┐    ┌──────────┬──────┐
+│ T_WORD   │ next │───▶│ T_WORD   │ next │───▶│ T_PIPE   │ next │──┐
+│ "ls"     │      │    │ "-la"    │      │    │ value=∅  │      │  │
+└──────────┴──────┘    └──────────┴──────┘    └──────────┴──────┘  │
+                                                                   │
+┌──────────────────────────────────────────────────────────────────┘
+│
+▼
+┌──────────┬──────┐    ┌──────────┬──────┐    ┌──────────┬──────┐
+│ T_WORD   │ next │───▶│ T_WORD   │ next │───▶│ T_PIPE   │ next │──┐
+│ "grep"   │      │    │ "src"    │      │    │ value=∅  │      │  │
+└──────────┴──────┘    └──────────┴──────┘    └──────────┴──────┘  │
+                                                                   │
+┌──────────────────────────────────────────────────────────────────┘
+│
+▼
+┌──────────┬──────┐    ┌──────────┬──────┐    ┌──────────┬──────┐
+│ T_WORD   │ next │───▶│ T_WORD   │ next │───▶│ T_OUT    │ next │──┐
+│ "wc"     │      │    │ "-l"     │      │    │ value=∅  │      │  │
+└──────────┴──────┘    └──────────┴──────┘    └──────────┴──────┘  │
+                                                                   │
+                                                                   ▼
+                                                          ┌──────────┬──────┐
+                                                          │ T_WORD   │ next │──▶ NULL
+                                                          │ "out"    │  ∅   │
+                                                          └──────────┴──────┘
 ```
 
-**Parser** (tree — structure of execution):
+Same list, compact view:
 
 ```
-                N_PIPE
-               /      \
-          N_CMD        N_PIPE
-         words:       /      \
-         ls, -la  N_CMD      N_CMD
-                grep,src   words: wc, -l
-                           redirs: > out
+[WORD ls] → [WORD -la] → [PIPE] → [WORD grep] → [WORD src] → [PIPE]
+    → [WORD wc] → [WORD -l] → [OUT] → [WORD out] → NULL
 ```
 
-Notice: `> out` is attached to the **`wc` command node**, not to the pipe itself. That is the main win of the AST over a raw token list.
+Properties of the lexer output:
+
+- **Order** = left-to-right order of the input.
+- **No hierarchy** — a pipe is just another token between words.
+- Operators (`PIPE`, `OUT`, …) usually have `value == NULL`; words keep their lexeme in `value`.
+- After `parse()`, this list is freed (`free_tokens`); only the AST remains.
 
 ---
 
-## Bonus example
+## AST scheme (tree)
+
+The **parser** consumes that list and builds a tree. For the same line:
+
+```sh
+ls -la | grep src | wc -l > out
+```
+
+```
+                         ┌─────────────────┐
+                         │     N_PIPE      │  ← sh->ast (root)
+                         │ left │   │ right│
+                         └──┬───┘   └──┬───┘
+                   left     │          │     right
+              ┌─────────────┘          └─────────────┐
+              ▼                                      ▼
+     ┌─────────────────┐                    ┌─────────────────┐
+     │     N_CMD       │                    │     N_PIPE      │
+     │ words:          │                    │ left │   │ right│
+     │   "ls", "-la"   │                    └──┬───┘   └──┬───┘
+     │ redirs: ∅       │                 left  │          │  right
+     └─────────────────┘              ┌────────┘          └────────┐
+                                      ▼                            ▼
+                             ┌─────────────────┐          ┌─────────────────┐
+                             │     N_CMD       │          │     N_CMD       │
+                             │ words:          │          │ words:          │
+                             │  "grep","src"   │          │  "wc", "-l"     │
+                             │ redirs: ∅       │          │ redirs:         │
+                             └─────────────────┘          │  T_OUT → "out"  │
+                                                          └─────────────────┘
+```
+
+How to read it:
+
+1. Root is a pipe: run left subtree, pipe into right subtree.
+2. Left of the root = first command `ls -la`.
+3. Right of the root = another pipe: `grep src` | `wc -l > out`.
+4. **`> out` lives on the last `N_CMD`**, not on `N_PIPE` — that is why redirections “stick” to the right command.
+
+Side-by-side summary:
+
+```
+LEXER (list)                         PARSER (tree)
+────────────                         ─────────────
+WORD ls  ──┐                            N_PIPE
+WORD -la ──┤                           /      \
+PIPE     ──┤                      N_CMD        N_PIPE
+WORD grep──┤                     ls -la       /      \
+WORD src ──┤                              N_CMD      N_CMD
+PIPE     ──┤                            grep src   wc -l
+WORD wc  ──┤                                       > out
+WORD -l  ──┤
+OUT      ──┤
+WORD out ──┘
+```
+
+---
+
+## Bonus example (lexer + AST)
 
 ```sh
 (false || echo ok) && ls | wc
 ```
 
-Conceptual tree:
+### Lexer list
 
 ```
-                 N_AND
-                /     \
-         N_SUBSHELL   N_PIPE
-             |        /     \
-          N_OR    N_CMD   N_CMD
-         /   \     ls      wc
-     N_CMD  N_CMD
-     false  echo ok
+[LPAREN] → [WORD false] → [OR] → [WORD echo] → [WORD ok] → [RPAREN]
+     → [AND] → [WORD ls] → [PIPE] → [WORD wc] → NULL
 ```
 
-Mandatory build never creates `N_AND` / `N_OR` / `N_SUBSHELL` (lexer/parser ops are the non-bonus files under `src/mandatory/`).
+### AST tree
+
+```
+                         ┌─────────────────┐
+                         │     N_AND       │  ← root
+                         │ left │   │ right│
+                         └──┬───┘   └──┬───┘
+                   left     │          │     right
+          ┌─────────────────┘          └─────────────────┐
+          ▼                                              ▼
+ ┌─────────────────┐                            ┌─────────────────┐
+ │   N_SUBSHELL    │                            │     N_PIPE      │
+ │ body = left     │                            │ left │   │ right│
+ └────────┬────────┘                            └──┬───┘   └──┬───┘
+          │                                 left   │          │  right
+          ▼                                        ▼          ▼
+ ┌─────────────────┐                      ┌────────────┐ ┌────────────┐
+ │      N_OR       │                      │   N_CMD    │ │   N_CMD    │
+ │ left │   │ right│                      │ words: ls  │ │ words: wc  │
+ └──┬───┘   └──┬───┘                      └────────────┘ └────────────┘
+    │          │
+    ▼          ▼
+┌────────┐ ┌────────────┐
+│ N_CMD  │ │   N_CMD    │
+│ false  │ │ echo, ok   │
+└────────┘ └────────────┘
+```
+
+Mandatory build never creates `N_AND` / `N_OR` / `N_SUBSHELL` (see `src/mandatory/` vs `src/bonus/`).
 
 ---
 
