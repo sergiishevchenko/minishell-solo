@@ -14,9 +14,41 @@ extern volatile sig_atomic_t g_signal;
 
 | Qualifier / type | Role |
 |------------------|------|
-| `volatile` | The value can change asynchronously in a signal handler; the compiler must not cache it in a register. |
-| `sig_atomic_t` | Integer type that is safe to read/write inside a signal handler. |
+| `volatile` | Forces every access to go to **memory**, not a compiler-kept copy in a CPU register. |
+| `sig_atomic_t` | Integer type that C guarantees can be read/written as one indivisible step in a signal handler. |
 | `extern` | Declared in the header; defined once in `src/main.c`. |
+
+#### Why `volatile` — “not from cache”
+
+Without `volatile`, the compiler may optimize like this:
+
+```c
+g_signal = 0;
+while (g_signal == 0)   // compiler thinks: nothing in this loop writes g_signal
+    ;                   // so it may load g_signal once into a register and reuse that copy
+```
+
+The signal handler runs **on the side** (when the kernel delivers Ctrl-C) and writes the real `g_signal` in **RAM**. The main loop never sees that write if it keeps reading the old **register** copy.
+
+With `volatile`:
+- each read → load from memory again;
+- each write → store to memory;
+- the handler’s update and the main code’s checks share the same location.
+
+So the value does not “come from somewhere magical”: it still lives in ordinary process memory. `volatile` only forbids the compiler from pretending a stale register/local copy is enough.
+
+(This is about the **compiler’s** register/CSE cache, not the CPU hardware cache. Hardware coherence is the kernel/CPU’s job; `volatile` alone is not a full multithread memory barrier, but it is what C requires for variables touched by signal handlers.)
+
+#### What “safe to read/write in a signal handler” means
+
+A signal can interrupt the program **between any two machine instructions**. If the main code is halfway through updating a big object (multi-byte store, pointer + length, `malloc` metadata, …), the handler must not touch that object: it could see a torn/partial update → undefined behavior / crash.
+
+`sig_atomic_t` is defined so that:
+
+- assigning `g_signal = SIGINT` and reading `x = g_signal` are treated as **atomic** for signal purposes (one complete write/read of that integer);
+- you only store a simple integer signal number, not a pointer or struct.
+
+In practice for this project: the handler may only assign to `g_signal`; the main code may only read/clear it. No `printf`, `malloc`, or complex structs inside the handler.
 
 **Purpose:** the only global variable in the project. It stores the last caught signal number (typically `SIGINT`), never a pointer or struct.
 
