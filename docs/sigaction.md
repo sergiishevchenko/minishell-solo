@@ -113,6 +113,31 @@ LATER (Ctrl-C)
 
 ---
 
+## What `prompt_handler` does on Ctrl-C
+
+```c
+static void	prompt_handler(int sig)
+{
+	g_signal = sig;
+	write(STDOUT_FILENO, "\n", 1);
+	rl_on_new_line();
+	rl_replace_line("", 0);
+	rl_redisplay();
+}
+```
+
+| Step | Role |
+|------|------|
+| `g_signal = sig` | Remember that `SIGINT` arrived (`shell_loop` later sets status `130`). |
+| `write(..., "\n")` | Move the cursor to a new line on the terminal. |
+| `rl_on_new_line()` | Tell readline the cursor is already on a **new** line (after that `\n`). Without this, readline still thinks it is on the old line. |
+| `rl_replace_line("", 0)` | Clear the input buffer (discard what the user typed). The `0` means do not clear readline’s undo list. |
+| `rl_redisplay()` | Redraw prompt + buffer → a clean `minishell$` line. |
+
+Without the three `rl_*` calls, Ctrl-C can leave a broken display: a newline was printed, but readline’s idea of the line/prompt is stale.
+
+---
+
 ## `sigaction` prototype
 
 ```c
