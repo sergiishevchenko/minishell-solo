@@ -156,7 +156,7 @@ Process-wide shell state passed through the pipeline.
 | `ast` | `t_node *` | Current line’s AST (cleared after exec) |
 | `line` | `char *` | Current input line from readline / stdin |
 | `argv` | `char **` | Expanded argv for the command being run |
-| `status` | `int` | Last exit status (`$?`) |
+| `status` | `int` | Last exit status (`$?`). Signal deaths use `128 + signo` (e.g. Ctrl-C → `130`); see [Exit status and signals](sigaction.md#exit-status-and-signals). |
 | `interactive` | `int` | Non-zero if stdin is a TTY (prompt + signals) |
 | `in_child` | `int` | Non-zero inside a forked child (affects `exit` printing, cleanup) |
 | `hd_count` | `int` | Counter for unique heredoc temp file names |

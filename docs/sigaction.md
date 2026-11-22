@@ -138,6 +138,43 @@ Without the three `rl_*` calls, Ctrl-C can leave a broken display: a newline was
 
 ---
 
+## Exit status and signals
+
+Process exit codes are one byte (`0…255`). Shells use this conventional map:
+
+| Range | Meaning |
+|-------|---------|
+| `0` | Success |
+| `1…125` | Normal program / builtin errors |
+| `126` | Command found but not executable |
+| `127` | Command not found |
+| `128…255` | Terminated by a signal |
+
+When a process (or the prompt) is interrupted by a signal, bash-style status is:
+
+```text
+status = 128 + signal_number
+```
+
+Examples:
+
+| Signal | Number | `$?` |
+|--------|--------|------|
+| `SIGINT` (Ctrl-C) | `2` | `130` |
+| `SIGQUIT` (Ctrl-\) | `3` | `131` |
+| `SIGKILL` | `9` | `137` |
+
+Why **128**? It marks the high bit (`0x80`) of the status byte: values `≥ 128` mean “died from a signal”, while smaller values stay available for ordinary exits. Signal numbers are small, so `128 + n` still fits in `0…255`.
+
+In this project `shell_loop` does exactly that after prompt Ctrl-C:
+
+```c
+if (g_signal == SIGINT)
+	sh->status = 130;  /* 128 + SIGINT */
+```
+
+---
+
 ## `sigaction` prototype
 
 ```c
