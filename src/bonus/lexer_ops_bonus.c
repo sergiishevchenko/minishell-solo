@@ -21,8 +21,11 @@ static int	op_len_logic(char *s, t_tok *type)
 
 int	op_len(char *s, t_tok *type)
 {
-	if (op_len_logic(s, type))
-		return (op_len_logic(s, type));
+	int	len;
+
+	len = op_len_logic(s, type);
+	if (len)
+		return (len);
 	if (s[0] == '<' && s[1] == '<')
 		return (set_op(type, T_HEREDOC, 2));
 	if (s[0] == '>' && s[1] == '>')
