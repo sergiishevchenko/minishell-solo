@@ -4,7 +4,7 @@ POSIX structure used with `sigaction(2)` to install or query a signal handler.
 
 In this project it appears in `src/shell/signals.c` inside `set_handler`.
 
-Related: global `g_signal` notes in [structs.md](structs.md).
+Related: shell signal modes in [signals.md](signals.md); global `g_signal` in [structs.md](structs.md).
 
 ---
 
