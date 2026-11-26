@@ -196,25 +196,80 @@ See [heredoc.md](heredoc.md) for when this runs.
 
 ## Worked example
 
-Input word (as stored on the AST): `"hi $USER"` with `USER=serg`
+### 1. Double-quoted word: `"hi $USER"`
+
+AST word (quotes still in the string): `"hi $USER"`  
+Env: `USER=serg`
+
+`exp_word` walks the string. Quote characters open/close state but are
+**not** pushed into `e.buf`.
+
+| step | char | `quote` before | action | `e.buf` after | `active` |
+|------|------|----------------|--------|---------------|----------|
+| 0 | `"` | `0` | open `"` → `quote = '"'` | *(empty)* | 1 |
+| 1 | `h` | `"` | `exp_push('h', quoted)` | `"h"` | 1 |
+| 2 | `i` | `"` | `exp_push('i', quoted)` | `"hi"` | 1 |
+| 3 | ` ` | `"` | `exp_push(' ', quoted)` — space stays (quoted) | `"hi "` | 1 |
+| 4 | `$` | `"` | `exp_dollar(..., quote='"')` | — | — |
+| 4a | | | name = `USER`, `env_get` → `"serg"` | | |
+| 4b | | | `exp_value(..., quoted=1)` — no split | `"hi serg"` | 1 |
+| 5 | `"` | `"` | close `"` → `quote = 0` | `"hi serg"` | 1 |
+| end | | `0` | `exp_end_field` | → fields | |
 
 ```text
-" h i   $ U S E R "
-│ │ │ │ │ └──────── exp_dollar → "serg" into buf
-│ └─┴─┴─ literal chars (quote open → quoted pushes)
-└ open ", then close "  (neither quote char is stored)
+input:  "  h  i     $  U  S  E  R  "
+        │  │  │  │  └──────────────┘
+        │  │  │  │         exp_dollar → exp_value("serg", quoted)
+        │  └─┴──┴── literal pushes (quoted=1)
+        └ open / close "  (dropped)
 
-e.buf = "hi serg"
-exp_end_field → fields: [ "hi serg" ]
+e.buf     = "hi serg"
+e.fields  = [ "hi serg" ]     ← one argv field
 ```
 
-Unquoted `$X` with `X="a b"`:
+Why one field? Inside `"..."`, `exp_value` / `exp_push` run with
+`quoted != 0`, so whitespace from the variable value would not split
+either — and the space between `hi` and `$USER` is a normal quoted
+character, not a field separator.
+
+---
+
+### 2. Unquoted variable with spaces: `$X`
+
+AST word: `$X`  
+Env: `X=a b` (value contains a space)
+
+| step | char / value | action | `e.buf` | `e.fields` |
+|------|--------------|--------|---------|------------|
+| 0 | `$` | `exp_dollar(..., quote=0)` | | |
+| 0a | | name = `X`, value = `"a b"` | | |
+| 0b | `'a'` | `exp_push('a', unquoted)` | `"a"` | `[]` |
+| 0c | `' '` | `ft_isspace` → `exp_end_field` | `NULL` | `[ "a" ]` |
+| 0d | `'b'` | `exp_push('b', unquoted)` | `"b"` | `[ "a" ]` |
+| end | | `exp_end_field` | `NULL` | `[ "a", "b" ]` |
 
 ```text
-$ X  → exp_value unquoted
-  'a' → buf
-  ' ' → exp_end_field → field "a"
-  'b' → buf
-end   → field "b"
-fields: [ "a", "b" ]
+$ X  →  exp_value("a b", quoted=0)
+         │
+         ├─ 'a'  →  buf = "a"
+         ├─ ' '  →  exp_end_field  →  fields: [ "a" ]
+         └─ 'b'  →  buf = "b"
+end              →  exp_end_field  →  fields: [ "a", "b" ]
 ```
+
+Result: **two** argv fields (`"a"` and `"b"`). Same mechanism as shell
+word-splitting on unquoted expansions.
+
+---
+
+### 3. Side-by-side
+
+Same env (`USER=serg`, `X=a b`):
+
+| AST word(s) | fields after expand | Why |
+|-------------|---------------------|-----|
+| `"hi $USER"` | `[ "hi serg" ]` | quoted: `$` expands, no split |
+| `hi$USER` | `[ "hiserg" ]` | one token; value glued, no space in value |
+| `$X` | `[ "a", "b" ]` | unquoted value → word-split on space |
+| `"$X"` | `[ "a b" ]` | quoted: space stays inside one field |
+| `'$USER'` | `[ "$USER" ]` | single quotes: `$` never expanded |
