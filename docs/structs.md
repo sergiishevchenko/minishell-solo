@@ -66,7 +66,7 @@ Subject constraint: one global, signal number only.
 
 ### `t_tok` — token kinds
 
-Produced by the lexer.
+Produced by the lexer. Full notes: [e_tok.md](e_tok.md).
 
 | Value | Meaning |
 |-------|---------|
@@ -83,7 +83,7 @@ Produced by the lexer.
 
 ### `t_ntype` — AST node kinds
 
-AST = Abstract Syntax Tree. Full notes: [ast.md](ast.md).
+AST = Abstract Syntax Tree. Full notes: [e_ntype.md](e_ntype.md), [ast.md](ast.md).
 
 | Value | Meaning |
 |-------|---------|

@@ -433,4 +433,5 @@ WORD "grep" → WORD "a" → IN → WORD "file" → PIPE
 | `src/bonus/parser_line_bonus.c` | `&&` `\|\|`, subshells |
 | `src/lexer/lexer_utils.c` | `token_str` for error text; `free_tokens` after parse |
 
-Previous stage: [lexer.md](lexer.md). Next conceptually: heredocs, then `exec_node` (see [ast.md](ast.md)).
+Previous stage: [lexer.md](lexer.md). Next: [heredoc.md](heredoc.md), then
+[executor.md](executor.md) / [expand.md](expand.md) (tree overview: [ast.md](ast.md)).

@@ -7,7 +7,9 @@ body to the command as stdin.
 **Entry:** `read_heredocs(t_shell *sh, t_node *node)` — called from
 `process_line` after parse, before `exec_node`.  
 **Types:** [`t_heredoc`](structs.md#t_heredoc), [`t_redir`](structs.md) with
-`type == T_HEREDOC`.
+`type == T_HEREDOC`.  
+**Related:** [expand.md](expand.md) (`expand_heredoc_line`),
+[executor.md](executor.md) (`apply_redirs`).
 
 ---
 
